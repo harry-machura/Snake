@@ -16,19 +16,6 @@ using System.Runtime.InteropServices;
 class Program
 {
     // ===== Snake-Config =====
-    const int FieldWidth = 40;
-    const int FieldHeight = 20;
-
-    const char BorderCh = '█';
-    const char HeadCh = '■';
-    const char BodyCh = '■';
-    const char FoodCh = '●';
-
-    static readonly ConsoleColor BorderFg = ConsoleColor.DarkGray;
-    static readonly ConsoleColor HeadFg = ConsoleColor.Green;
-    static readonly ConsoleColor BodyFg = ConsoleColor.DarkGreen;
-    static readonly ConsoleColor FoodFg = ConsoleColor.Red;
-
     static readonly Random Rng = new Random();
 
     // ===== Musik / Settings =====
@@ -218,206 +205,19 @@ class Program
 
         while (true)
         {
-            int score = RunSnakeRound();
+            var game = new SnakeGame(Rng);
+            int score = game.PlayRound();
             if (score < 0) // ESC -> zurück
                 return;
 
             SaveScore(score);
 
-            Console.SetCursorPosition(0, FieldHeight + 2);
+            Console.SetCursorPosition(0, SnakeGame.RequiredHeight + 2);
             Console.ResetColor();
             Console.WriteLine($"Score gespeichert: {score}.  (Enter = neue Runde, ESC = zurück zum Menü)");
             var key = Console.ReadKey(true).Key;
             if (key == ConsoleKey.Escape) return;
         }
-    }
-
-    // ---------- Snake ----------
-    static int RunSnakeRound()
-    {
-        Console.CursorVisible = false;
-        Console.Clear();
-        EnsureWindowSize();
-        DrawBorder();
-
-        var snake = new LinkedList<(int x, int y)>();
-        int startX = FieldWidth / 2;
-        int startY = FieldHeight / 2;
-        snake.AddFirst((startX, startY));
-        snake.AddLast((startX - 1, startY));
-        snake.AddLast((startX - 2, startY));
-
-        var occupied = new HashSet<(int x, int y)>(snake);
-
-        int dx = 1, dy = 0;
-
-        var food = SpawnFood(occupied);
-        DrawAt(food.x, food.y, FoodCh, FoodFg);
-
-        int score = 0;
-        int tickMs = 120;
-        var timer = new Stopwatch();
-        timer.Start();
-
-        bool gameOver = false;
-
-        TitleBar(score);
-
-        while (!gameOver)
-        {
-            // Eingabe
-            if (Console.KeyAvailable)
-            {
-                var key = Console.ReadKey(true).Key;
-                switch (key)
-                {
-                    case ConsoleKey.LeftArrow:
-                    case ConsoleKey.A: if (dx != 1) { dx = -1; dy = 0; } break;
-                    case ConsoleKey.RightArrow:
-                    case ConsoleKey.D: if (dx != -1) { dx = 1; dy = 0; } break;
-                    case ConsoleKey.UpArrow:
-                    case ConsoleKey.W: if (dy != 1) { dx = 0; dy = -1; } break;
-                    case ConsoleKey.DownArrow:
-                    case ConsoleKey.S: if (dy != -1) { dx = 0; dy = 1; } break;
-                    case ConsoleKey.Escape:
-                        Console.CursorVisible = true;
-                        return -1; // zurück zum Menü
-                }
-            }
-
-            if (timer.ElapsedMilliseconds >= tickMs)
-            {
-                timer.Restart();
-
-                var head = snake.First!.Value;
-                int nx = head.x + dx;
-                int ny = head.y + dy;
-
-                // Wände
-                if (nx <= 0 || nx >= FieldWidth - 1 || ny <= 0 || ny >= FieldHeight - 1)
-                {
-                    gameOver = true; break;
-                }
-                // Körper
-                if (occupied.Contains((nx, ny)))
-                {
-                    gameOver = true; break;
-                }
-
-                // Zeichnen
-                DrawAt(nx, ny, HeadCh, HeadFg);
-                DrawAt(head.x, head.y, BodyCh, BodyFg);
-
-                snake.AddFirst((nx, ny));
-                occupied.Add((nx, ny));
-
-                bool ate = (nx, ny) == food;
-
-                if (ate)
-                {
-                    score++;
-                    TitleBar(score);
-                    TryBeep(880, 80); // kurzer Beep beim Essen
-
-                    if (tickMs > 45) tickMs -= 3; // schneller
-                    food = SpawnFood(occupied);
-                    DrawAt(food.x, food.y, FoodCh, FoodFg);
-                }
-                else
-                {
-                    // Schwanz entfernen
-                    var tail = snake.Last!.Value;
-                    snake.RemoveLast();
-                    occupied.Remove(tail);
-                    DrawAt(tail.x, tail.y, ' ', null);
-                }
-            }
-
-            Thread.Sleep(1);
-        }
-
-        // Game Over
-        Console.SetCursorPosition(0, FieldHeight);
-        Console.ResetColor();
-        Console.WriteLine($"\nGame Over! Score: {score}   (Enter = weiter, ESC = zurück zum Menü)");
-        Console.CursorVisible = true;
-
-        // Warten auf Taste
-        while (true)
-        {
-            var k = Console.ReadKey(true).Key;
-            if (k == ConsoleKey.Enter) break;
-            if (k == ConsoleKey.Escape) return -1;
-        }
-
-        return score;
-    }
-
-    static void TitleBar(int score)
-    {
-        Console.SetCursorPosition(0, FieldHeight);
-        Console.ResetColor();
-        Console.Write($" Score: {score}    (WASD/Pfeile, ESC Menü)   ");
-    }
-
-    static void DrawBorder()
-    {
-        for (int x = 0; x < FieldWidth; x++)
-        {
-            DrawAt(x, 0, BorderCh, BorderFg);
-            DrawAt(x, FieldHeight - 1, BorderCh, BorderFg);
-        }
-        for (int y = 0; y < FieldHeight; y++)
-        {
-            DrawAt(0, y, BorderCh, BorderFg);
-            DrawAt(FieldWidth - 1, y, BorderCh, BorderFg);
-        }
-    }
-
-    static (int x, int y) SpawnFood(HashSet<(int x, int y)> occupied)
-    {
-        int x, y;
-        do
-        {
-            x = Rng.Next(1, FieldWidth - 1);
-            y = Rng.Next(1, FieldHeight - 1);
-        } while (occupied.Contains((x, y)));
-        return (x, y);
-    }
-
-    static void DrawAt(int x, int y, char ch, ConsoleColor? fg)
-    {
-        Console.SetCursorPosition(x, y);
-        var prevFg = Console.ForegroundColor;
-        if (fg.HasValue) Console.ForegroundColor = fg.Value;
-        Console.Write(ch);
-        if (fg.HasValue) Console.ForegroundColor = prevFg;
-    }
-
-    static void EnsureWindowSize()
-    {
-        try
-        {
-            if (Console.WindowWidth < FieldWidth || Console.WindowHeight < FieldHeight + 2)
-            {
-                Console.SetWindowSize(
-                    Math.Max(Console.WindowWidth, FieldWidth),
-                    Math.Max(Console.WindowHeight, FieldHeight + 2));
-            }
-            if (Console.BufferWidth < FieldWidth || Console.BufferHeight < FieldHeight + 2)
-            {
-                Console.SetBufferSize(
-                    Math.Max(Console.BufferWidth, FieldWidth),
-                    Math.Max(Console.BufferHeight, FieldHeight + 2));
-            }
-        }
-        catch { /* manche Terminals erlauben das nicht */ }
-    }
-
-    static void TryBeep(int freq, int ms)
-    {
-        try { Console.Beep(freq, ms); }
-        catch { /* auf manchen Systemen nicht verfügbar */ }
     }
 
     // ===== Musik: Start/Wechsel/Stop =====
