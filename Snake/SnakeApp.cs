@@ -7,6 +7,7 @@ internal sealed class SnakeApp
     private readonly AudioService _audioService;
     private readonly HighscoreService _highscoreService;
     private readonly SnakeGame _snakeGame;
+    private SnakeDifficulty _selectedDifficulty = SnakeDifficulty.Normal;
 
     public SnakeApp(AudioService audioService, HighscoreService highscoreService, SnakeGame snakeGame)
     {
@@ -55,6 +56,7 @@ internal sealed class SnakeApp
             Console.WriteLine(" 4) Exit");
             Console.WriteLine();
             Console.WriteLine($" Musik: [{(_audioService.MusicEnabled ? 'X' : ' ')}]  Song: {(_audioService.SelectedSongTitle ?? "-")}");
+            Console.WriteLine($" Modus: {FormatDifficulty(_selectedDifficulty)}");
             Console.WriteLine();
             Console.Write(" Auswahl (1-4): ");
 
@@ -86,7 +88,8 @@ internal sealed class SnakeApp
             Console.WriteLine();
             Console.WriteLine($" 1) Musik an/aus   [{(_audioService.MusicEnabled ? 'X' : ' ')}]");
             Console.WriteLine(" 2) Song auswählen");
-            Console.WriteLine(" 3) Zurück");
+            Console.WriteLine($" 3) Schwierigkeit: {FormatDifficulty(_selectedDifficulty)}");
+            Console.WriteLine(" 4) Zurück");
             Console.WriteLine();
             Console.Write(" Auswahl: ");
 
@@ -101,7 +104,11 @@ internal sealed class SnakeApp
             {
                 ShowSongSelectionMenu();
             }
-            else if (key == '3' || key == (char)27)
+            else if (key == '3')
+            {
+                CycleDifficulty();
+            }
+            else if (key == '4' || key == (char)27)
             {
                 return;
             }
@@ -189,7 +196,7 @@ internal sealed class SnakeApp
 
         while (true)
         {
-            SnakeRoundResult result = _snakeGame.PlayRound();
+            SnakeRoundResult result = _snakeGame.PlayRound(_selectedDifficulty);
             if (result.ExitToMenu)
             {
                 return;
@@ -199,7 +206,7 @@ internal sealed class SnakeApp
 
             Console.SetCursorPosition(0, _snakeGame.Height + 2);
             Console.ResetColor();
-            Console.WriteLine($"Score gespeichert: {result.Score}.  (Enter = neue Runde, ESC = zurück zum Menü)");
+            Console.WriteLine($"Score gespeichert ({FormatDifficulty(_selectedDifficulty)}): {result.Score}.  (Enter = neue Runde, ESC = zurück zum Menü)");
 
             var key = Console.ReadKey(true).Key;
             if (key == ConsoleKey.Escape)
@@ -208,6 +215,26 @@ internal sealed class SnakeApp
             }
         }
     }
+
+    private void CycleDifficulty()
+    {
+        _selectedDifficulty = _selectedDifficulty switch
+        {
+            SnakeDifficulty.Easy => SnakeDifficulty.Normal,
+            SnakeDifficulty.Normal => SnakeDifficulty.Hard,
+            _ => SnakeDifficulty.Easy,
+        };
+
+        Console.WriteLine($"\nNeue Schwierigkeit: {FormatDifficulty(_selectedDifficulty)} (Beliebige Taste …)");
+        Console.ReadKey(true);
+    }
+
+    private static string FormatDifficulty(SnakeDifficulty difficulty) => difficulty switch
+    {
+        SnakeDifficulty.Easy => "Leicht",
+        SnakeDifficulty.Hard => "Schwer",
+        _ => "Normal",
+    };
 
     private enum MainMenuChoice
     {

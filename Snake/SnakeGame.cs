@@ -25,7 +25,7 @@ internal sealed class SnakeGame
     public int Width => FieldWidth;
     public int Height => FieldHeight;
 
-    public SnakeRoundResult PlayRound()
+    public SnakeRoundResult PlayRound(SnakeDifficulty difficulty)
     {
         Console.CursorVisible = false;
         Console.Clear();
@@ -47,13 +47,16 @@ internal sealed class SnakeGame
         DrawAt(food.x, food.y, FoodCh, FoodFg);
 
         int score = 0;
-        int tickMs = 120;
+        int tickMs = GetInitialTickMs(difficulty);
+        int minTickMs = GetMinimumTickMs(difficulty);
         var timer = new Stopwatch();
         timer.Start();
 
         bool gameOver = false;
+        bool paused = false;
 
-        DrawTitleBar(score);
+        DrawTitleBar(score, difficulty);
+        DrawPauseOverlay(false);
 
         while (!gameOver)
         {
@@ -94,10 +97,21 @@ internal sealed class SnakeGame
                             dy = 1;
                         }
                         break;
+                    case ConsoleKey.P:
+                        paused = !paused;
+                        DrawPauseOverlay(paused);
+                        timer.Restart();
+                        continue;
                     case ConsoleKey.Escape:
                         Console.CursorVisible = true;
                         return SnakeRoundResult.ExitToMenu();
                 }
+            }
+
+            if (paused)
+            {
+                Thread.Sleep(10);
+                continue;
             }
 
             if (timer.ElapsedMilliseconds >= tickMs)
@@ -131,12 +145,12 @@ internal sealed class SnakeGame
                 if (ate)
                 {
                     score++;
-                    DrawTitleBar(score);
+                    DrawTitleBar(score, difficulty);
                     TryBeep(880, 80);
 
-                    if (tickMs > 45)
+                    if (tickMs > minTickMs)
                     {
-                        tickMs -= 3;
+                        tickMs = Math.Max(minTickMs, tickMs - GetTickDecreaseStep(difficulty));
                     }
 
                     food = SpawnFood(occupied);
@@ -158,6 +172,7 @@ internal sealed class SnakeGame
         Console.ResetColor();
         Console.WriteLine($"\nGame Over! Score: {score}   (Enter = weiter, ESC = zurück zum Menü)");
         Console.CursorVisible = true;
+        DrawPauseOverlay(false);
 
         while (true)
         {
@@ -176,11 +191,11 @@ internal sealed class SnakeGame
         return SnakeRoundResult.Finished(score);
     }
 
-    private static void DrawTitleBar(int score)
+    private static void DrawTitleBar(int score, SnakeDifficulty difficulty)
     {
         Console.SetCursorPosition(0, FieldHeight);
         Console.ResetColor();
-        Console.Write($" Score: {score}    (WASD/Pfeile, ESC Menü)   ");
+        Console.Write($" Score: {score}    Modus: {GetDifficultyLabel(difficulty)}  (WASD/Pfeile, ESC Menü, P Pause)   ");
     }
 
     private static void DrawBorder()
@@ -195,6 +210,49 @@ internal sealed class SnakeGame
         {
             DrawAt(0, y, BorderCh, BorderFg);
             DrawAt(FieldWidth - 1, y, BorderCh, BorderFg);
+        }
+    }
+
+    private static int GetInitialTickMs(SnakeDifficulty difficulty) => difficulty switch
+    {
+        SnakeDifficulty.Easy => 150,
+        SnakeDifficulty.Hard => 90,
+        _ => 120,
+    };
+
+    private static int GetMinimumTickMs(SnakeDifficulty difficulty) => difficulty switch
+    {
+        SnakeDifficulty.Easy => 75,
+        SnakeDifficulty.Hard => 45,
+        _ => 60,
+    };
+
+    private static int GetTickDecreaseStep(SnakeDifficulty difficulty) => difficulty switch
+    {
+        SnakeDifficulty.Easy => 2,
+        SnakeDifficulty.Hard => 4,
+        _ => 3,
+    };
+
+    private static string GetDifficultyLabel(SnakeDifficulty difficulty) => difficulty switch
+    {
+        SnakeDifficulty.Easy => "Leicht",
+        SnakeDifficulty.Hard => "Schwer",
+        _ => "Normal",
+    };
+
+    private static void DrawPauseOverlay(bool paused)
+    {
+        Console.SetCursorPosition(0, FieldHeight + 1);
+        Console.ResetColor();
+        if (paused)
+        {
+            Console.Write(" Pause aktiviert – P zum Fortsetzen.".PadRight(FieldWidth + 20));
+        }
+        else
+        {
+            Console.Write(new string(' ', FieldWidth + 20));
+            Console.SetCursorPosition(0, FieldHeight + 1);
         }
     }
 
