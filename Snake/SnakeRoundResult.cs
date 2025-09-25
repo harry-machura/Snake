@@ -12,7 +12,7 @@ internal readonly struct SnakeRoundResult
 
     public int Score { get; }
 
-    public static SnakeRoundResult ExitToMenu() => new(true, 0);
+    public static SnakeRoundResult CreateExitToMenu() => new(true, 0);
 
     public static SnakeRoundResult Finished(int score) => new(false, score);
 }
