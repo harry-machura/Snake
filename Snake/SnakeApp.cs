@@ -48,7 +48,7 @@ internal sealed class SnakeApp
             Console.Clear();
             Console.CursorVisible = true;
 
-            Console.WriteLine("====== S N A K E  (Console) ======");
+            Console.WriteLine("====== S N A K E ======");
             Console.WriteLine();
             Console.WriteLine(" 1) Spielen");
             Console.WriteLine(" 2) Einstellungen");

@@ -127,7 +127,7 @@ internal sealed class SnakeGame
                         continue;
                     case ConsoleKey.Escape:
                         Console.CursorVisible = true;
-                        return SnakeRoundResult.ExitToMenu();
+                        return SnakeRoundResult.CreateExitToMenu();
                 }
             }
 
@@ -202,7 +202,7 @@ internal sealed class SnakeGame
 
             if (key == ConsoleKey.Escape)
             {
-                return SnakeRoundResult.ExitToMenu();
+                return SnakeRoundResult.CreateExitToMenu();
             }
         }
 
